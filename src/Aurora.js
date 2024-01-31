@@ -233,7 +233,7 @@ class Aurora {
 
     if (config && config.reactive) {
       baseURL = reactive({
-        url: url,
+        url: url != null ? url : this.axiosInstance.defaults.baseURL,
       });
     }
 
