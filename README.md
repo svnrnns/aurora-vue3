@@ -1,6 +1,6 @@
 # Aurora
 
-Aurora is a package that enhances the Axios experience in **Vue 3**, offering advanced features like automatic loading state management, limit max ongoing calls, request cancellation, authentication support, call timeouts, call intervals, and more.
+Aurora is a package that enhances the Axios experience in **Vue 3**, replacing the asynchrony with Vue proxys and offering advanced features like automatic loading state management, set a limit for unresolved ongoing calls, request cancellation, authentication support, reactive calls, call timeouts, call intervals, and more.
 
 ## Table of Contents
 
@@ -14,19 +14,22 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, offering ad
 
 ## Features
 
-### Enhanced Axios Integration
+### Enhanced Axios Integration:
 
 - Seamless integration with Axios, leveraging its powerful features.
 
-### Loading State
+### Loading State:
 
 - Automatic handling of loading indicators for asynchronous requests.
 - Simplifies state management during data fetching.
 
-### Error Handling:
+### Recall Functionality:
 
-- Improved error handling with customizable error messages and formats.
-- Support for handling specific HTTP error codes. (not yet implemented)
+- Introducing a "recall" feature allowing users to re-trigger Axios calls and update computed data.
+
+### Reactivity:
+
+- Make a call recall itself automatically whenever the value of the url, header or param changes or updates.
 
 ### Request Cancellation:
 
@@ -43,19 +46,24 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, offering ad
 - Ability to add custom headers and query parameters to HTTP requests.
 - Easy-to-use functions for adding and removing headers.
 
-### Timeouts:
-
-- Implement timeout options for requests to prevent long-running requests from impacting the user experience.
-- Easily add and remove timeout configurations.
-
 ### Concurrency Control:
 
 - Efficiently manage concurrent requests to avoid race conditions.
 - Option to limit the number of simultaneous requests.
 
-### Recall Functionality:
+### Timeouts:
 
-- Introduces a "recall" feature allowing users to re-trigger Axios calls and update computed data.
+- Implement timeout options for requests to prevent long-running requests from impacting the user experience.
+- Easily add and remove timeout configurations.
+
+### Intervals:
+
+- Implement an interval to repeat the same call after a given milliseconds.
+- Clearence of the interval if needed.
+
+### Error Handling:
+
+- Improved error handling with customized error messages and formats for a better understanding and handling.
 
 ## Installation
 
@@ -188,44 +196,40 @@ Headers and params can be added to the Aurora instance as we saw in [configurati
 
 ```js
 // Make a GET request with custom headers
-const customHeadersRequest = auroraInstance.get("/api/data", {
-  Authorization: "Bearer YOUR_ACCESS_TOKEN",
-  "Custom-Header": "CustomValue",
-});
+const headers = {
+  {
+    Authorization: "Bearer YOUR_ACCESS_TOKEN",
+    "Custom-Header": "CustomValue",
+  }
+}
+
+const customHeadersRequest = auroraInstance.get("/api/data", headers);
 
 // Make a GET request with query parameters
-const queryParamsRequest = auroraInstance.get(
-  "/api/data",
-  {},
+const queryParams = {
   {
     page: 1,
     pageSize: 10,
     sortBy: "date",
   }
-);
-
-// Make a POST request with custom headers and data
-const customHeadersAndParamsRequest = auroraInstance.post(
-  "/api/create",
-  {
-    Authorization: "Bearer YOUR_ACCESS_TOKEN",
-    "Content-Type": "application/json",
-  },
-  {
-    name: "John Doe",
-    email: "john@example.com",
-    age: 30,
-  }
+}
+const customQueryParamsRequest = auroraInstance.get(
+  "/api/data",
+  null,
+  queryParams
 );
 ```
 
-### Intervals
+### The config param: Interval
 
 Make repeated requests at a specified interval. Useful for real-time data updates.
 
 ```js
 // Make repeated requests every 10 seconds
-const intervalResponse = auroraInstance.get("/api/data", { interval: 10000 });
+const config = {
+  interval: 1000,
+};
+const intervalResponse = auroraInstance.get("/api/data", null, null, config);
 
 // Stop the interval-based requests after 30 seconds
 setTimeout(() => {
@@ -233,13 +237,44 @@ setTimeout(() => {
 }, 30000);
 ```
 
-### Timeouts
+### The config param: Timeouts
 
 Set a custom timeout for the request to ensure it doesn't run indefinitely, even if it does not receive a response.
 
 ```js
 // Make a request that will expire after 5 seconds
-const timeoutResponse = auroraInstance.get("/api/data", { timeout: 5000 });
+const config = {
+  timeout: 5000,
+};
+const timeoutResponse = auroraInstance.get("/api/data", null, null, config);
+```
+
+### How Reactivity works
+
+A call can be made reactive in Aurora, making it recall itself whenever any value of the url, headers, or params changes. In a case where a param is **page: 10** in the first place but then it updates to **page: 11**, if the call is set to reactive, then it will repeat the api call but using the updated param. This applies to url and headers as said before <br>
+
+To accomplish this, set the option **reactive: true** in the config param.
+
+```js
+const config = { reactive: true };
+```
+
+Then make sure to be using reactive objects in the call method params. Use **ref/computed** for a reactive url and **reactive** for the headers and params.
+
+```js
+const selectedLimit = ref(10);
+const selectedPokemon = ref("ditto");
+const baseURL = "https://pokeapi.co/api/v2/pokemon/";
+
+const refURL = ref(baseURL);
+
+const computedURL = computed(() => {
+  return baseURL + selectedPokemon.value;
+});
+
+const params = reactive({
+  limit: selectedLimit,
+});
 ```
 
 ### The Recall function
@@ -270,7 +305,7 @@ setTimeout(() => {
 ### setMaxConcurrentRequestsLimit
 
 Sets the maximum concurrent requests limit for the Aurora instance. <br>
-Throws an **Error** if the parameter is not a number or is an infinite number.
+Throws an **AuroraClassError** if the parameter is not a number or is an infinite number.
 | Param | Type | Nullable | Desc |
 |-----------------------|-----------------|----------|--------------------------------------------------------------------------------------------------------------------------------------|
 | limit | Number | &check; | The maximum concurrent requests limit. If null or undefined (left empty), or if 0, concurrency control is effectively disabled. If a positive number, sets the maximum concurrent requests to that value. |
@@ -278,7 +313,7 @@ Throws an **Error** if the parameter is not a number or is an infinite number.
 ### addHeaders
 
 Adds common headers to the Aurora instance.<br>
-Throws an **Error** if the parameter is not of type 'object' or is null.
+Throws an **AuroraClassError** if the parameter is not of type 'object' or is null.
 | Param | Type | Nullable | Desc |
 |-----------------------|-----------------|----------|------------------------------------------------------------------------|
 | headers | Object | &cross; | An object containin key-paired values representing headers to be added |
@@ -286,7 +321,7 @@ Throws an **Error** if the parameter is not of type 'object' or is null.
 ### removeHeaders
 
 Removes specified headers from the common headers Aurora instance. If no parameters are provided, removes all headers.
-Throws an **Error** if the parameter is not an array when provided.
+Throws an **AuroraClassError** if the parameter is not an array when provided.
 | Param | Type | Nullable | Desc |
 |-----------------------|-----------------|----------|--------------------------------------------------------------------------------------------------|
 | headerNames | Array<String> | &check; | An optional array containing the header names to be removed. If not provided, remove all headers |
@@ -294,7 +329,7 @@ Throws an **Error** if the parameter is not an array when provided.
 ### addParams
 
 Adds common query parameters to the Aurora instance. <br>
-Throws an **Error** if the parameter is not of type 'object' or is null.
+Throws an **AuroraClassError** if the parameter is not of type 'object' or is null.
 | Param | Type | Nullable | Desc |
 |-----------------------|-----------------|----------|------------------------------------------------------------------------|
 | params | Object | &cross; | An object containin key-paired values representing query params to be added |
@@ -302,7 +337,7 @@ Throws an **Error** if the parameter is not of type 'object' or is null.
 ### removeParams
 
 Removes specified query params from the common parameters Aurora instance. If no parameters are provided, removes all headers.<br>
-Throws an **Error** if the parameter is not an array when provided.
+Throws an **AuroraClassError** if the parameter is not an array when provided.
 | Param | Type | Nullable | Desc |
 |-----------------------|-----------------|----------|--------------------------------------------------------------------------------------------------|
 | paramNames | Array<String> | &check; | An optional array containing the param names to be removed. If not provided, remove all parameters |
@@ -310,7 +345,7 @@ Throws an **Error** if the parameter is not an array when provided.
 ### addTimeout
 
 Adds a timeout configuration to the Aurora instance defaults.<br>
-Throws an **Error** if the parameter is not a Number.
+Throws an **AuroraClassError** if the parameter is not a Number.
 | Param | Type | Nullable | Desc |
 |---------|--------|----------|---------------------|
 | timeout | Number | &check; | Timeout value in ms |
@@ -326,19 +361,19 @@ Simply cancells all ongonig requests that are using the instance AbortController
 ### call
 
 Makes an HTTP request.<br>
-Returns a **Vue Computed** variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.<br>
-Throws an **Error** if the URL is either empty or null.<br>
-Throws an **Error** if the method is not of type String.
+Returns a **Vue computed variable** which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.<br>
+Throws an **AuroraInstanceError** if the URL is either empty or null.<br>
+Throws an **AuroraInstanceError** if the method is not of type String.
 
-| Param           | Type            | Nullable | Desc                                                                                                                                                                        |
-| --------------- | --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| method          | String          | &cross;  | The HTTP method. (get/post/put/patch/delete)                                                                                                                                |
-| url             | String          | &cross;  | The endpoint.url                                                                                                                                                            |
-| headers         | Object          | &check;  | Additional headers to include in the request.                                                                                                                               |
-| params          | Object          | &check;  | Additional query params to include in the request.                                                                                                                          |
-| interval        | Number          | &check;  | The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)                                                                                  |
-| timeout         | Number          | &check;  | The call will expire after a certain timeout if is not resolved. Pass 0 or leave empty this param for no timeout. (Expressed in ms)                                         |
-| AbortController | AbortController | &check;  | The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request. |
+| Param           | Type            | Nullable | Desc                                                                                                                                                                                                                               |
+| --------------- | --------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| method          | String          | &cross;  | The HTTP method. (get/post/put/patch/delete)                                                                                                                                                                                       |
+| url             | String          | &cross;  | The endpoint.url                                                                                                                                                                                                                   |
+| headers         | Object          | &check;  | Additional headers to include in the request.                                                                                                                                                                                      |
+| params          | Object          | &check;  | Additional query params to include in the request.                                                                                                                                                                                 |
+| config          | Object          | &check;  | The configuration variable to define the call behavior. It can contain [timeout](#the-config-param-timeouts) (number in ms), [interval](#the-config-param-interval) (number in ms) and [reactive](#how-reactivity-works) (boolean) |
+| timeout         | Number          | &check;  | The call will expire after a certain timeout if is not resolved. Pass 0 or leave empty this param for no timeout. (Expressed in ms)                                                                                                |
+| AbortController | AbortController | &check;  | The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.                                                        |
 
 ### get post put patch delete
 

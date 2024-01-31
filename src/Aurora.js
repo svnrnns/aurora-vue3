@@ -1,5 +1,10 @@
 import axios from "axios";
-import { ref, computed } from "vue";
+import {
+  AuroraPromiseError,
+  AuroraInstanceError,
+  AuroraClassError,
+} from "./errors.js";
+import { ref, computed, watch, reactive } from "vue";
 
 /**
  * Aurora class to ehnance HTTP requests in Vue.
@@ -13,7 +18,7 @@ class Aurora {
     abortController = new AbortController()
   ) {
     if (typeof url !== "string") {
-      throw new Error("Variable must be of type String");
+      throw new AuroraClassError("Variable must be of type String");
     }
     this.axiosInstance = axios.create();
     this.axiosInstance.defaults.baseURL = url;
@@ -68,7 +73,7 @@ class Aurora {
    * @param {number|null|undefined} limit - The maximum concurrent requests limit.
    *   If null or undefined (left empty), or if 0, concurrency control is effectively disabled.
    *   If a positive number, sets the maximum concurrent requests to that value.
-   * @throws {Error} Throws an error if the parameter is not a number or is an infinite number.
+   * @throws {AuroraClassError} Throws an error if the parameter is not a number or is an infinite number.
    */
   setMaxConcurrentRequestsLimit(limit) {
     if (limit === null || limit === undefined || limit === 0) {
@@ -78,7 +83,7 @@ class Aurora {
     } else if (typeof limit === "number" && Number.isFinite(limit)) {
       this.axiosInstance.defaults.maxConcurrentRequests = limit;
     } else {
-      throw new Error("Param must be of type Number of left empty");
+      throw new AuroraClassError("Param must be of type Number of left empty");
     }
   }
 
@@ -86,7 +91,7 @@ class Aurora {
    * Adds common headers to the Axios instance.
    *
    * @param {Object} headers - An object containing key-value pairs representing headers to be added.
-   * @throws {Error} Throws an error if the parameter is not of type 'object' or is null.
+   * @throws {AuroraClassError} Throws an error if the parameter is not of type 'object' or is null.
    */
   addHeaders(headers) {
     if (typeof headers === "object" && headers !== null) {
@@ -94,7 +99,7 @@ class Aurora {
         this.axiosInstance.defaults.headers.common[key] = value;
       }
     } else {
-      throw new Error("Param must be of type Object");
+      throw new AuroraClassError("Param must be of type Object");
     }
   }
 
@@ -102,7 +107,7 @@ class Aurora {
    * Removes specified headers from the common headers Axios instance. If no parameters are provided, removes all headers.
    *
    * @param {Array<string>?} headerNames - An optional array of header names to be removed. If not provided, removes all headers.
-   * @throws {Error} Throws an error if the parameter is not an array when provided.
+   * @throws {AuroraClassError} Throws an error if the parameter is not an array when provided.
    */
   removeHeaders(headerNames) {
     if (headerNames === undefined) {
@@ -112,7 +117,7 @@ class Aurora {
         delete this.axiosInstance.defaults.headers.common[header];
       });
     } else {
-      throw new Error(
+      throw new AuroraClassError(
         "Invalid input. Please provide an array of header names or no params to remove all headers."
       );
     }
@@ -122,7 +127,7 @@ class Aurora {
    * Adds common query parameters to the Axios instance.
    *
    * @param {Object} params - An object containing key-value pairs representing query parameters to be added.
-   * @throws {Error} Throws an error if the parameter is not of type 'object'.
+   * @throws {AuroraClassError} Throws an error if the parameter is not of type 'object'.
    */
   addParams(params) {
     if (typeof params === "object" && params !== null) {
@@ -130,7 +135,7 @@ class Aurora {
         this.axiosInstance.defaults.params[key] = value;
       }
     } else {
-      throw new Error("Param must be of type Object");
+      throw new AuroraClassError("Param must be of type Object");
     }
   }
 
@@ -138,7 +143,7 @@ class Aurora {
    * Removes specified query parameters from the common parameters in the Axios instance. If no parameters are provided, removes all parameters.
    *
    * @param {Array<string>?} paramNames - An optional array of parameter names to be removed. If not provided, removes all parameters.
-   * @throws {Error} Throws an error if the parameter is not an array when provided.
+   * @throws {AuroraClassError} Throws an error if the parameter is not an array when provided.
    */
   removeParams(paramNames) {
     if (paramNames === undefined) {
@@ -148,7 +153,7 @@ class Aurora {
         delete this.axiosInstance.defaults.params[param];
       });
     } else {
-      throw new Error(
+      throw new AuroraClassError(
         "Invalid input. Please provide an array of parameter names or no params to remove all parameters."
       );
     }
@@ -158,13 +163,13 @@ class Aurora {
    * Adds a timeout configuration to the Axios instance defaults.
    *
    * @param {number} timeout - Timeout value in milliseconds.
-   * @throws {Error} Throws an error if the parameter is not a Number.
+   * @throws {AuroraClassError} Throws an error if the parameter is not a Number.
    */
   addTimeout(timeout) {
     if (typeof timeout === "number") {
       this.axiosInstance.defaults.timeout = timeout;
     } else {
-      throw new Error("Timeout must be a number in milliseconds.");
+      throw new AuroraClassError("Timeout must be a number in milliseconds.");
     }
   }
 
@@ -182,6 +187,33 @@ class Aurora {
     this.abortController.abort();
   }
 
+  static validateCall(
+    method,
+    url,
+    baseURL,
+    headers,
+    params,
+    config,
+    abortController
+  ) {
+    // Fail if url is an object but the call is not reactive
+    if (config && !config.reactive && typeof url == "object") {
+      throw new AuroraInstanceError(
+        "URL cannot be of type object if the call is not reactive."
+      );
+    }
+
+    // Fail if url is emtpy
+    if (config && config.reactive ? baseURL.url.trim() === "" : baseURL.trim())
+      throw new AuroraInstanceError("URL cannot be null");
+
+    // Fail if method is not a string
+    if (typeof method !== "string") {
+      throw new AuroraInstanceError(
+        "Method must be of type string (get/post/put/patch/delete)"
+      );
+    }
+  }
   /**
    * Makes an HTTP request.
    *
@@ -189,43 +221,51 @@ class Aurora {
    * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty this variable for no timeout. (Expressed in ms)
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
    * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
-  call(
-    method,
-    url,
-    headers,
-    params,
-    interval = 0,
-    timeout = 0,
-    abortController = null
-  ) {
+  call(method, url, headers, params, config = null, abortController = null) {
+    // Call config
     let baseURL = url != null ? url : this.axiosInstance.defaults.baseURL;
+
+    if (config && config.reactive) {
+      baseURL = reactive({
+        url: url,
+      });
+    }
+
     let abortControllerReference =
       abortController != null ? abortController : this.abortController;
-    let timeoutReference =
-      timeout != 0 ? timeout : this.axiosInstance.defaults.timeout;
 
-    if (baseURL.trim() === "") {
-      throw new Error("URL cannot be null");
-    }
-    if (typeof method !== "string") {
-      throw new Error(
-        "Param method must be of type string (get/post/put/patch/delete)"
-      );
-    }
+    let timeoutReference =
+      config && config.timeout
+        ? config.timeout
+        : this.axiosInstance.defaults.timeout;
+
+    let intervalReference = config && config.interval ? config.interval : 0;
+
+    Aurora.validateCall(
+      method,
+      url,
+      baseURL,
+      headers,
+      params,
+      config,
+      abortController
+    );
+
+    // Call
     const isLoading = ref(true);
     const response = ref(null);
+    const error = ref(null);
 
     const makeRequest = () => {
       isLoading.value = true;
       this.axiosInstance({
-        url: baseURL,
+        url: config && config.reactive ? baseURL.url : baseURL,
         method: method.toLowerCase(),
         headers,
         params,
@@ -236,32 +276,56 @@ class Aurora {
           response.value = axiosResponse;
         })
         .catch((axiosError) => {
-          throw axiosError;
+          error.value = new AuroraPromiseError(axiosError);
         })
         .finally(() => {
           isLoading.value = false;
         });
     };
 
-    const intervalId = setInterval(makeRequest, interval);
+    // Call behavior
+    const intervalId = setInterval(makeRequest, intervalReference);
 
-    if (interval <= 0) {
+    if (intervalReference <= 0) {
       setTimeout(() => {
         clearInterval(intervalId);
-      }, interval + 1);
+      }, intervalReference + 1);
     }
 
     const recall = () => {
       makeRequest();
     };
+
     const stop = () => {
       clearInterval(intervalId);
     };
+
+    // Reactivity
+    if (config && config.reactive) {
+      if (baseURL) {
+        watch(baseURL, () => {
+          makeRequest();
+        });
+      }
+
+      if (headers) {
+        watch(headers, () => {
+          makeRequest();
+        });
+      }
+
+      if (params) {
+        watch(params, () => {
+          makeRequest();
+        });
+      }
+    }
 
     return computed(() => ({
       isLoading: isLoading.value,
       response: response.value,
       abortController: abortControllerReference,
+      error: error.value,
       recall,
       stop,
     }));
@@ -273,15 +337,15 @@ class Aurora {
    * @function
    * @memberof Aurora
    * @name get
-   * @param {string} url - The endpoint URL.
+   * @param {string} method - The HTTP method (get/post/put/patch/delete).
+   * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty for no timeout. (Expressed in ms)
-   * @param {AbortController?} abortController - The call will be linked to an AbortController signal. If this parameter is left empty, it will use the object AbortController, which is the default controller for all requests.
-   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
+   * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
+   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
   get = this.call.bind(this, "get");
 
@@ -290,16 +354,16 @@ class Aurora {
    *
    * @function
    * @memberof Aurora
-   * @name get
-   * @param {string} url - The endpoint URL.
+   * @name post
+   * @param {string} method - The HTTP method (get/post/put/patch/delete).
+   * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty for no timeout. (Expressed in ms)
-   * @param {AbortController?} abortController - The call will be linked to an AbortController signal. If this parameter is left empty, it will use the object AbortController, which is the default controller for all requests.
-   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
+   * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
+   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
   post = this.call.bind(this, "post");
 
@@ -308,16 +372,16 @@ class Aurora {
    *
    * @function
    * @memberof Aurora
-   * @name get
-   * @param {string} url - The endpoint URL.
+   * @name put
+   * @param {string} method - The HTTP method (get/post/put/patch/delete).
+   * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty for no timeout. (Expressed in ms)
-   * @param {AbortController?} abortController - The call will be linked to an AbortController signal. If this parameter is left empty, it will use the object AbortController, which is the default controller for all requests.
-   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
+   * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
+   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
   put = this.call.bind(this, "put");
 
@@ -326,16 +390,16 @@ class Aurora {
    *
    * @function
    * @memberof Aurora
-   * @name get
-   * @param {string} url - The endpoint URL.
+   * @name patch
+   * @param {string} method - The HTTP method (get/post/put/patch/delete).
+   * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty for no timeout. (Expressed in ms)
-   * @param {AbortController?} abortController - The call will be linked to an AbortController signal. If this parameter is left empty, it will use the object AbortController, which is the default controller for all requests.
-   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
+   * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
+   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
   patch = this.call.bind(this, "patch");
 
@@ -344,16 +408,16 @@ class Aurora {
    *
    * @function
    * @memberof Aurora
-   * @name get
-   * @param {string} url - The endpoint URL.
+   * @name delete
+   * @param {string} method - The HTTP method (get/post/put/patch/delete).
+   * @param {string} url - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
-   * @param {number} interval - The endpoint will be called repeatedly if this number is greater than 0. (Expressed in ms)
-   * @param {number} timeout - The call will expire after a certain timeout, pass 0 or leave empty for no timeout. (Expressed in ms)
-   * @param {AbortController?} abortController - The call will be linked to an AbortController signal. If this parameter is left empty, it will use the object AbortController, which is the default controller for all requests.
-   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
-   * @throws {Error} Throws an error if the URL is either empty or null.
-   * @throws {Error} Throws an error if the method is not of type String.
+   * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
+   * @param {AbortController?} abortController - The call with be linked to an AbortController signal. If this param is left empty, it will use the object AbortController, which is the default controller for all request.
+   * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
+   * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
+   * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
   delete = this.call.bind(this, "delete");
 }
