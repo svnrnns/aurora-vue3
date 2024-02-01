@@ -189,36 +189,78 @@ class Aurora {
 
   static validateCall(
     method,
-    url,
-    baseURL,
+    combinedURL,
     headers,
     params,
     config,
     abortController
   ) {
-    // Fail if url is an object but the call is not reactive
-    if (config && !config.reactive && typeof url == "object") {
-      throw new AuroraInstanceError(
-        "URL cannot be of type object if the call is not reactive."
-      );
-    }
-
-    // Fail if url is emtpy
-    if (config && config.reactive ? baseURL.url.trim() === "" : baseURL.trim())
+    if (combinedURL == null || combinedURL.trim() == "")
       throw new AuroraInstanceError("URL cannot be null");
 
-    // Fail if method is not a string
     if (typeof method !== "string") {
       throw new AuroraInstanceError(
         "Method must be of type string (get/post/put/patch/delete)"
       );
+    }
+    if (headers && typeof headers != "object") {
+      throw new AuroraInstanceError("Headers must be of type object.");
+    }
+    if (params && typeof params != "object") {
+      throw new AuroraInstanceError("Query Params must be of type object.");
+    }
+    if (config && typeof config != "object") {
+      throw new AuroraInstanceError("Config must be of type object.");
+    }
+    if (abortController && typeof abortController != "object") {
+      throw new AuroraInstanceError(
+        "The AbortController must be of type AbortController."
+      );
+    }
+  }
+
+  static combineURL(url, endpoint) {
+    const cleanURL = url.replace(/\/+$/, "");
+    const cleanEndpoint = endpoint.replace(/^\/+/, "");
+
+    return `${cleanURL}/${cleanEndpoint}`;
+  }
+
+  static mountEndpoint(baseURL, endpoint, isReactive) {
+    if (!isReactive && typeof endpoint == "object") {
+      throw new AuroraInstanceError(
+        "URL or Endpoint cannot be of type object if the call is not reactive."
+      );
+    }
+    if (typeof endpoint == "number") {
+      throw new AuroraInstanceError("URL or Endpoint cannot be a number");
+    }
+
+    if (isReactive) {
+      if (endpoint == null) {
+        return baseURL;
+      }
+      if (baseURL == null || baseURL.trim() == "") {
+        return endpoint.value;
+      }
+      return Aurora.combineURL(baseURL, endpoint.value);
+    }
+
+    if (!isReactive) {
+      if (endpoint == null || endpoint.trim() == "") {
+        return baseURL;
+      }
+      if (baseURL == null || baseURL.trim() == "") {
+        return endpoint;
+      }
+      return Aurora.combineURL(baseURL, endpoint);
     }
   }
   /**
    * Makes an HTTP request.
    *
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -226,16 +268,36 @@ class Aurora {
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the headers param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the params param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
-  call(method, url, headers, params, config = null, abortController = null) {
+  call(
+    method,
+    endpoint,
+    headers,
+    params,
+    config = null,
+    abortController = null
+  ) {
     // Call config
-    let baseURL = url != null ? url : this.axiosInstance.defaults.baseURL;
+    const isReactive = config && config.reactive ? true : false;
 
-    if (config && config.reactive) {
-      baseURL = reactive({
-        url: url != null ? url : this.axiosInstance.defaults.baseURL,
-      });
-    }
+    let combinedURL = Aurora.mountEndpoint(
+      this.axiosInstance.defaults.baseURL,
+      endpoint,
+      isReactive
+    );
+
+    Aurora.validateCall(
+      method,
+      combinedURL,
+      headers,
+      params,
+      config,
+      abortController
+    );
 
     let abortControllerReference =
       abortController != null ? abortController : this.abortController;
@@ -247,16 +309,6 @@ class Aurora {
 
     let intervalReference = config && config.interval ? config.interval : 0;
 
-    Aurora.validateCall(
-      method,
-      url,
-      baseURL,
-      headers,
-      params,
-      config,
-      abortController
-    );
-
     // Call
     const isLoading = ref(true);
     const response = ref(null);
@@ -265,7 +317,7 @@ class Aurora {
     const makeRequest = () => {
       isLoading.value = true;
       this.axiosInstance({
-        url: config && config.reactive ? baseURL.url : baseURL,
+        url: combinedURL,
         method: method.toLowerCase(),
         headers,
         params,
@@ -301,9 +353,14 @@ class Aurora {
     };
 
     // Reactivity
-    if (config && config.reactive) {
-      if (baseURL) {
-        watch(baseURL, () => {
+    if (isReactive) {
+      if (endpoint) {
+        watch(endpoint, () => {
+          combinedURL = Aurora.mountEndpoint(
+            this.axiosInstance.defaults.baseURL,
+            endpoint,
+            isReactive
+          );
           makeRequest();
         });
       }
@@ -338,7 +395,7 @@ class Aurora {
    * @memberof Aurora
    * @name get
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -346,6 +403,10 @@ class Aurora {
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the headers param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the params param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
   get = this.call.bind(this, "get");
 
@@ -356,7 +417,7 @@ class Aurora {
    * @memberof Aurora
    * @name post
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -364,6 +425,10 @@ class Aurora {
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the headers param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the params param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
   post = this.call.bind(this, "post");
 
@@ -374,7 +439,7 @@ class Aurora {
    * @memberof Aurora
    * @name put
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -382,6 +447,10 @@ class Aurora {
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the headers param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the params param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
   put = this.call.bind(this, "put");
 
@@ -392,7 +461,7 @@ class Aurora {
    * @memberof Aurora
    * @name patch
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -410,7 +479,7 @@ class Aurora {
    * @memberof Aurora
    * @name delete
    * @param {string} method - The HTTP method (get/post/put/patch/delete).
-   * @param {string} url - The endpoint url.
+   * @param {string} endpoint - The endpoint url.
    * @param {Object} headers - Additional headers to include in the request.
    * @param {Object} params - Query parameters to include in the request.
    * @param {Object} config - A configuration object to inject an additional behavior to the call. For further info visit the docu on GitHub.
@@ -418,6 +487,10 @@ class Aurora {
    * @returns {computed} - A Vue computed variable which contains a loading indicator, the endpoint response if exists or has been successfully called, a custom error if thrown and and the linked AbortController.
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
+   * @throws {AuroraInstanceError} Throws an error if the headers param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the params param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
+   * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
   delete = this.call.bind(this, "delete");
 }

@@ -20,7 +20,7 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 
 ### Loading State:
 
-- Automatic handling of loading indicators for asynchronous requests.
+- Automatic handling of loading indicators.
 - Simplifies state management during data fetching.
 
 ### Recall Functionality:
@@ -29,7 +29,7 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 
 ### Reactivity:
 
-- Make a call recall itself automatically whenever the value of the url, header or param changes or updates.
+- Make a call recall itself automatically whenever the value of the endpoint, header or param changes or updates.
 
 ### Request Cancellation:
 
@@ -59,7 +59,7 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 ### Intervals:
 
 - Implement an interval to repeat the same call after a given milliseconds.
-- Clearence of the interval if needed.
+- Utility function of an instance to clear the interval if needed.
 
 ### Error Handling:
 
@@ -75,17 +75,32 @@ $ npm install @svnrnns/aurora --save-dev
 
 [Install](#Installation) the Aurora package. <br>
 
-Create an instance of Aurora with an optional URL. This instance is bounded by default to an AbortController and set to a maximum number of concurrent requests of Infinite.
+Create an instance of Aurora with an optional URL. <br>
+If the constructor receives and URL, it will be set as base URL so every call made with take the **endpoint** param as an API endpoint combining the URL and the endpoint. <br>
+
+```js
+import Aurora from "@svnrnns/aurora";
+
+const auroraInstance = new Aurora("https://api.example.com");
+const response = auroraInstance.get("/users");
+```
+
+On the other hand, if the constructor does not receive an URL, then the **endpoint** param will become the complete URL of the call.
 
 ```js
 import Aurora from "@svnrnns/aurora";
 
 const auroraInstance = new Aurora();
-const auroraInstance = new Aurora("https://api.example.com"); // Link a default url to the instance
+const response = auroraInstance.get("https://api.example.com");
+```
+
+When creating an Aurora instance, this is bounded by default to an AbortController and set to a maximum number of concurrent requests of Infinite.
+
+```js
 const auroraInstance = new Aurora("https://api.example.com", 5); // Set the max concurrent requests to 5
 const auroraInstance = new Aurora(
   "https://api.example.com",
-  5,
+  null,
   abortController
 ); // Use a custom AbortController
 ```
@@ -94,8 +109,9 @@ const auroraInstance = new Aurora(
 
 Any Aurora request returns a computed variable with the following properties:
 
-- **isLoading**: Indicates whether or not the request has received a response.
+- **isLoading**: Indicates whether or not the request has been resolved.
 - **response**: The request response.
+- **error**: An imperative error if the request fails.
 - **abortController**: The linked AbortController of this call. Aurora uses the instance AbortController by default in every request.
 - **recall( )**: A callable function that repeats the same request.
 - **stop( )**: If the request is under an interval, use this function to clear it.
@@ -115,15 +131,15 @@ There are 5 available methods to make a call, being **GET, POST, PUT, PATCH and 
 
 ### Instance Configuration
 
-Aurora offers several tools to customize the instance, such as default url, headers, params, custom AbortController for handling request cancellation, and setting a maximum of ongoing requests.
+Aurora offers several tools to customize the instance, such as base url, headers, params, custom AbortController for handling request cancellation, and setting a maximum of ongoing unresolved requests.
 
-- To add a **default url**, use the Aurora constructor. This url will be used by default when making a request using this instance.
+- To add a **base url**, use the Aurora constructor. This url will be used when making a request using this instance.
 
 ```js
 new Aurora("https://api.example.com");
 ```
 
-- To set a max concurrent request limit, use the Aurora constructor or the following function. If the Aurora instance exceeds the limit of unresolved requests, every further request will fail.
+- To set a max concurrent number of unresolved request, use the Aurora constructor or the following function. If the Aurora instance exceeds the limit of unresolved requests, every further request will fail.
 
 ```js
 new Aurora(null, 5);
@@ -171,7 +187,7 @@ auroraInstance.removeParams();
 - Finally, it is possible to add a **default timeout** for all the requests of an Aurora instance.
 
 ```js
-// Add a default timeout of 1s
+// Add a default timeout of 1s for every request of the instance
 auroraInstance.addTimeout(1000);
 
 // Remove it
@@ -192,7 +208,7 @@ This is the main method of Aurora and has a lot of configuration and features.
 
 ### Additional headers & params
 
-Headers and params can be added to the Aurora instance as we saw in [configuration](#instance-configuration), but can also be added to a specific call.
+Headers and params can be added to the Aurora instance as we saw in [configuration](#instance-configuration), but can also be passed to a specific call.
 
 ```js
 // Make a GET request with custom headers
@@ -205,7 +221,7 @@ const headers = {
 
 const customHeadersRequest = auroraInstance.get("/api/data", headers);
 
-// Make a GET request with query parameters
+// Make a GET request with custom query parameters
 const queryParams = {
   {
     page: 1,
@@ -219,6 +235,11 @@ const customQueryParamsRequest = auroraInstance.get(
   queryParams
 );
 ```
+
+### Usage of the config parameter
+
+An Aurora instance call can receive a config object that indicates the behavior of the call. <br>
+In the current version of the package, the available options for the config object are [interval](#the-config-param-interval), [timeout](#the-config-param-timeouts) and [reactive](#how-reactivity-works).
 
 ### The config param: Interval
 
@@ -251,15 +272,15 @@ const timeoutResponse = auroraInstance.get("/api/data", null, null, config);
 
 ### How Reactivity works
 
-A call can be made reactive in Aurora, making it recall itself whenever any value of the url, headers, or params changes. In a case where a param is **page: 10** in the first place but then it updates to **page: 11**, if the call is set to reactive, then it will repeat the api call but using the updated param. This applies to url and headers as said before <br>
+A call can be made reactive in Aurora, making it recall itself whenever any value of the endpoint, headers, or params changes. In a case where a param is `page: 10` in the first place but then it updates to `page: 11`, if the call is set to reactive, then it will repeat the API call but using the updated param. This applies to endpoint and headers as well as said before <br>
 
-To accomplish this, set the option **reactive: true** in the config param.
+To accomplish this, set the option `reactive: true` in the config param.
 
 ```js
 const config = { reactive: true };
 ```
 
-Then make sure to be using reactive objects in the call method params. Use **ref/computed** for a reactive url and **reactive** for the headers and params.
+Then make sure to be using reactive objects in the call method params. Use `ref/computed` for a reactive endpoint and the `reactive` Vue object for the headers and params.
 
 ```js
 const selectedLimit = ref(10);
@@ -272,14 +293,18 @@ const computedURL = computed(() => {
   return baseURL + selectedPokemon.value;
 });
 
-const params = reactive({
+const reactiveParams = reactive({
   limit: selectedLimit,
 });
+
+auroraInstance.get(computedURL, null, reactiveParams, config);
 ```
+
+> For a better understanding, in the code we see above this note, if the reactiveParam or the computedURL values changes or updates, then the computed response of the `get( )` method wiill update in real time, as the config is set to `reactive: true` and both endpoint and params are using reactive Vue objects.
 
 ### The Recall function
 
-Use the recall function to trigger the Axios request again and update the computed properties. <br>
+Use the `recall( )` function to trigger the Axios request again and update the computed properties. <br>
 This is useful to make the same call once again without creating a new Aurora instance or a new computed variable.
 
 ```js
@@ -362,13 +387,16 @@ Simply cancells all ongonig requests that are using the instance AbortController
 
 Makes an HTTP request.<br>
 Returns a **Vue computed variable** which contains a loading indicator, the endpoint response if exists or has been successfully called and and the linked AbortController.<br>
-Throws an **AuroraInstanceError** if the URL is either empty or null.<br>
-Throws an **AuroraInstanceError** if the method is not of type String.
+Throws an **AuroraInstanceError** if the `endpoint` is either empty or null.<br>
+Throws an **AuroraInstanceError** if the `method` is not of type String.<br>
+Throws an **AuroraInstanceError** if the `params` parameter is not of type object (if given).<br>
+Throws an **AuroraInstanceError** if the `config` parameter is not of type object (if given).<br>
+Throws an **AuroraInstanceError** if the `abortController` parameter is not of type AbortController (if given).
 
 | Param           | Type            | Nullable | Desc                                                                                                                                                                                                                               |
 | --------------- | --------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | method          | String          | &cross;  | The HTTP method. (get/post/put/patch/delete)                                                                                                                                                                                       |
-| url             | String          | &cross;  | The endpoint.url                                                                                                                                                                                                                   |
+| endpoint        | String          | &cross;  | The endpoint url.                                                                                                                                                                                                                  |
 | headers         | Object          | &check;  | Additional headers to include in the request.                                                                                                                                                                                      |
 | params          | Object          | &check;  | Additional query params to include in the request.                                                                                                                                                                                 |
 | config          | Object          | &check;  | The configuration variable to define the call behavior. It can contain [timeout](#the-config-param-timeouts) (number in ms), [interval](#the-config-param-interval) (number in ms) and [reactive](#how-reactivity-works) (boolean) |
