@@ -68,7 +68,7 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 ## Installation
 
 ```bash
-$ npm install @svnrnns/aurora --save-dev
+$ npm install @svnrnns/aurora-vue --save-dev
 ```
 
 ## Usage
@@ -79,7 +79,7 @@ Create an instance of Aurora with an optional URL. <br>
 If the constructor receives and URL, it will be set as base URL so every call made with take the **endpoint** param as an API endpoint combining the URL and the endpoint. <br>
 
 ```js
-import Aurora from "@svnrnns/aurora";
+import Aurora from "@svnrnns/aurora-vue";
 
 const auroraInstance = new Aurora("https://api.example.com");
 const response = auroraInstance.get("/users");
@@ -88,7 +88,7 @@ const response = auroraInstance.get("/users");
 On the other hand, if the constructor does not receive an URL, then the **endpoint** param will become the complete URL of the call.
 
 ```js
-import Aurora from "@svnrnns/aurora";
+import Aurora from "@svnrnns/aurora-vue";
 
 const auroraInstance = new Aurora();
 const response = auroraInstance.get("https://api.example.com");
