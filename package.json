@@ -1,7 +1,7 @@
 {
   "name": "aurora-vue3",
   "private": false,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Enhanced Axios package for Vue 3",
   "license": "MIT",
   "type": "module",
@@ -12,6 +12,10 @@
       "import": "./dist/aurora.es.js",
       "require": "./dist/aurora.umd.js"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/svnrnns/aurora-vue3"
   },
   "scripts": {
     "co": "sui-mono commit",
