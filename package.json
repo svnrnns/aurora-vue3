@@ -1,7 +1,7 @@
 {
   "name": "@svnrnns/aurora-vue",
   "private": false,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Enhanced Axios package for Vue 3",
   "license": "MIT",
   "type": "module",
