@@ -1,6 +1,14 @@
 # Aurora
 
-Aurora is a package that enhances the Axios experience in **Vue 3**, replacing the asynchrony with Vue proxys and offering advanced features like automatic loading state management, set a limit for unresolved ongoing calls, request cancellation, authentication support, reactive calls, call timeouts, call intervals, and more.
+Aurora is a package designed to elevate the Axios experience within Vue 3 applications. It replaces traditional asynchronous handling with Vue proxies, offering advanced features such as:
+
+- Automatic loading state management.
+- Setting limits for unresolved ongoing calls.
+- Request cancellation.
+- Authentication support.
+- Reactive calls.
+- Call timeouts.
+- Call intervals.
 
 ## Table of Contents
 
@@ -25,15 +33,15 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 
 ### Recall Functionality:
 
-- Introducing a "recall" feature allowing users to re-trigger Axios calls and update computed data.
+- Introducing a "recall" feature allowing developers to re-trigger Axios calls and update computed data.
 
 ### Reactivity:
 
-- Make a call recall itself automatically whenever the value of the endpoint, header or param changes or updates.
+- Automatically trigger a call to update whenever there are changes or updates to the value of the endpoint, header, or parameter.
 
 ### Request Cancellation:
 
-- Mechanism to cancel requests, especially useful in scenarios like navigating away from a component while a request is still pending.
+- Mechanism to cancel unresolved requests, specially useful in scenarios like navigating away from a component while a request is still pending.
 - Utilizes the modern AbortController for request cancellation.
 
 ### Authentication Support:
@@ -58,8 +66,8 @@ Aurora is a package that enhances the Axios experience in **Vue 3**, replacing t
 
 ### Intervals:
 
-- Implement an interval to repeat the same call after a given milliseconds.
-- Utility function of an instance to clear the interval if needed.
+- Implement an interval to repeat the same call after a specified number of milliseconds.
+- Utility function within the instance to clear the interval if necessary
 
 ### Error Handling:
 
@@ -75,8 +83,8 @@ $ npm install aurora-vue3 --save-dev
 
 [Install](#Installation) the Aurora package. <br>
 
-Create an instance of Aurora with an optional URL. <br>
-If the constructor receives and URL, it will be set as base URL so every call made with take the **endpoint** param as an API endpoint combining the URL and the endpoint. <br>
+Create an instance of Aurora, optionally specifying a base URL.<br>
+If a URL is provided during instantiation, it will serve as the base URL for all subsequent calls. Each call made will take the endpoint parameter as an API endpoint, combining it with the specified URL. <br>
 
 ```js
 import Aurora from "aurora-vue3";
@@ -85,13 +93,13 @@ const auroraInstance = new Aurora("https://api.example.com");
 const response = auroraInstance.get("/users");
 ```
 
-On the other hand, if the constructor does not receive an URL, then the **endpoint** param will become the complete URL of the call.
+On the other hand, if the constructor does not receive a URL, then the endpoint parameter will serve as the complete URL for the call. This provides flexibility in specifying either a base URL or a complete URL depending on the requirements of your application.
 
 ```js
 import Aurora from "aurora-vue3";
 
 const auroraInstance = new Aurora();
-const response = auroraInstance.get("https://api.example.com");
+const response = auroraInstance.get("https://api.example.com/users");
 ```
 
 When creating an Aurora instance, this is bounded by default to an AbortController and set to a maximum number of concurrent requests of Infinite.
@@ -107,7 +115,7 @@ const auroraInstance = new Aurora(
 
 ### Make a Request
 
-Any Aurora request returns a computed variable with the following properties:
+Any Aurora request returns a Vue computed variable with the following properties:
 
 - **isLoading**: Indicates whether or not the request has been resolved.
 - **response**: The request response.
@@ -131,9 +139,9 @@ There are 5 available methods to make a call, being **GET, POST, PUT, PATCH and 
 
 ### Instance Configuration
 
-Aurora offers several tools to customize the instance, such as base url, headers, params, custom AbortController for handling request cancellation, and setting a maximum of ongoing unresolved requests.
+Aurora offers several tools to customize the instance, such as base URL, headers, params, custom AbortController for handling request cancellation, and the option to set a maximum of ongoing unresolved requests.
 
-- To add a **base url**, use the Aurora constructor. This url will be used when making a request using this instance.
+- To add a **base URL**, use the Aurora constructor. This URL will be used when making a request using this instance.
 
 ```js
 new Aurora("https://api.example.com");
@@ -197,14 +205,15 @@ auroraInstance.removeTimeout();
 ## Advanced Usage
 
 The existing functions **get( )**, **post( )**, **put( )**, **patch( )** and **delete( )** are alias of the main function **call( )**. <br>
-A get( ) function simply uses the method call( ) passing "get" as a param.
+A **get( )** function simply uses the method **call( )** passing "get" as a param.
 
 ```js
 auroraInstance.get("https://api.example.com");
 auroraInstance.call("get", "https://api.example.com");
+// both are the same thing
 ```
 
-This is the main method of Aurora and has a lot of configuration and features.
+Those are the main methods of Aurora and has a lot of configuration and features.
 
 ### Additional headers & params
 
@@ -219,7 +228,9 @@ const headers = {
   }
 }
 
-const customHeadersRequest = auroraInstance.get("/api/data", headers);
+const customHeadersRequest = auroraInstance.get(
+  "/api/data",
+  headers);
 
 // Make a GET request with custom query parameters
 const queryParams = {
@@ -235,6 +246,8 @@ const customQueryParamsRequest = auroraInstance.get(
   queryParams
 );
 ```
+
+> We are passing `null` above as we are not adding headers to that call.
 
 ### Usage of the config parameter
 
@@ -258,7 +271,7 @@ setTimeout(() => {
 }, 30000);
 ```
 
-### The config param: Timeouts
+### The config param: Timeout
 
 Set a custom timeout for the request to ensure it doesn't run indefinitely, even if it does not receive a response.
 
@@ -272,35 +285,42 @@ const timeoutResponse = auroraInstance.get("/api/data", null, null, config);
 
 ### How Reactivity works
 
-A call can be made reactive in Aurora, making it recall itself whenever any value of the endpoint, headers, or params changes. In a case where a param is `page: 10` in the first place but then it updates to `page: 11`, if the call is set to reactive, then it will repeat the API call but using the updated param. This applies to endpoint and headers as well as said before <br>
+In Aurora, you can make a call reactive, allowing it to automatically recall itself whenever there is a change in any value of the endpoint, headers, or parameters. For example, if a parameter initially has a value of `page: 10`, but later updates to `page: 11`, a reactive call will automatically repeat the API call using the updated parameter value. <br>
+This reactivity also applies to changes in endpoints and headers, as mentioned earlier. <br>
 
-To accomplish this, set the option `reactive: true` in the config param.
+To enable this feature, simply set the option reactive: true in the configuration parameter.
 
 ```js
 const config = { reactive: true };
 ```
 
-Then make sure to be using reactive objects in the call method params. Use `ref/computed` for a reactive endpoint and the `reactive` Vue object for the headers and params.
+Ensure the usage of reactive objects in the call metod parameters. <br>
+Use `ref/computed` for a reactive endpoint and the `reactive` Vue object for the headers and params.
 
 ```js
+// Define reactive variables
 const selectedLimit = ref(10);
 const selectedPokemon = ref("ditto");
 const baseURL = "https://pokeapi.co/api/v2/pokemon/";
 
+// Create a reactive reference to the base URL
 const refURL = ref(baseURL);
 
+// Compute the URL dynamically based on selectedPokemon value
 const computedURL = computed(() => {
   return baseURL + selectedPokemon.value;
 });
 
+// Define reactive parameters using Vue's reactive function
 const reactiveParams = reactive({
   limit: selectedLimit,
 });
 
+// Invoke the Aurora instance's get method
 auroraInstance.get(computedURL, null, reactiveParams, config);
 ```
 
-> For a better understanding, in the code we see above this note, if the reactiveParam or the computedURL values changes or updates, then the computed response of the `get( )` method wiill update in real time, as the config is set to `reactive: true` and both endpoint and params are using reactive Vue objects.
+> To clarify, in the provided code snippet, any changes or updates to the values of `reactiveParams` or `computedURL` will dynamically reflect in the computed response of the **get()** method. This is facilitated by setting the config option to reactive: true and utilizing reactive Vue objects for both endpoint and parameters.
 
 ### The Recall function
 
