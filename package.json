@@ -1,8 +1,8 @@
 {
   "name": "aurora-vue3",
   "private": false,
-  "version": "0.0.51",
-  "description": "Enhanced Axios package for Vue 3",
+  "version": "1.0.0",
+  "description": "Enhanced HTTP requests in Vue 3 (with axios)",
   "license": "MIT",
   "type": "module",
   "main": "./dist/aurora.umd.js",
@@ -17,8 +17,34 @@
     "type": "git",
     "url": "https://github.com/svnrnns/aurora-vue3"
   },
+  "keywords": [
+    "Vue 3",
+    "Axios",
+    "HTTP requests",
+    "REST API",
+    "Concurrent requests",
+    "Vue hooks",
+    "AbortController",
+    "Reactive API calls",
+    "HTTP client",
+    "Vue composition API",
+    "Aurora",
+    "Vue.js",
+    "AJAX",
+    "API integration",
+    "Vue plugins",
+    "Vue utilities",
+    "HTTP interceptors",
+    "Error handling",
+    "Custom headers",
+    "Query parameters"
+  ],
+  "bugs": {
+    "url": "https://github.com/svnrnns/aurora-vue3/issues"
+  },
+  "homepage": "https://github.com/svnrnns/aurora-vue3",
+  "author": "seven rings (https://twitter.com/svnrnns)",
   "scripts": {
-    "co": "sui-mono commit",
     "dev": "vite build --watch",
     "build": "vite build",
     "preview": "vite preview"
