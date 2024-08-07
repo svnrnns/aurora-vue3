@@ -1,10 +1,10 @@
-import axios from "axios";
+import axios from 'axios';
 import {
   AuroraPromiseError,
   AuroraInstanceError,
   AuroraClassError,
-} from "./errors.js";
-import { ref, computed, watch, reactive } from "vue";
+} from './errors.js';
+import { ref, computed, watch } from 'vue';
 
 /**
  * Aurora class to ehnance HTTP requests in Vue.
@@ -13,12 +13,12 @@ class Aurora {
   #ongoingRequests;
 
   constructor(
-    url = "",
+    url = '',
     maxConcurrentRequests = Number.POSITIVE_INFINITY,
     abortController = new AbortController()
   ) {
-    if (typeof url !== "string") {
-      throw new AuroraClassError("Variable must be of type String");
+    if (typeof url !== 'string') {
+      throw new AuroraClassError('Variable must be of type String');
     }
     this.axiosInstance = axios.create();
     this.axiosInstance.defaults.baseURL = url;
@@ -48,7 +48,7 @@ class Aurora {
     ) {
       const cancelTokenSource = axios.CancelToken.source();
       config.cancelToken = cancelTokenSource.token;
-      cancelTokenSource.cancel("Too many concurrent requests");
+      cancelTokenSource.cancel('Too many concurrent requests');
     }
     return config;
   }
@@ -80,10 +80,10 @@ class Aurora {
       // Set to a large number or a value that effectively disables concurrency control
       this.axiosInstance.defaults.maxConcurrentRequests =
         Number.POSITIVE_INFINITY;
-    } else if (typeof limit === "number" && Number.isFinite(limit)) {
+    } else if (typeof limit === 'number' && Number.isFinite(limit)) {
       this.axiosInstance.defaults.maxConcurrentRequests = limit;
     } else {
-      throw new AuroraClassError("Param must be of type Number of left empty");
+      throw new AuroraClassError('Param must be of type Number of left empty');
     }
   }
 
@@ -94,12 +94,12 @@ class Aurora {
    * @throws {AuroraClassError} Throws an error if the parameter is not of type 'object' or is null.
    */
   addHeaders(headers) {
-    if (typeof headers === "object" && headers !== null) {
+    if (typeof headers === 'object' && headers !== null) {
       for (const [key, value] of Object.entries(headers)) {
         this.axiosInstance.defaults.headers.common[key] = value;
       }
     } else {
-      throw new AuroraClassError("Param must be of type Object");
+      throw new AuroraClassError('Param must be of type Object');
     }
   }
 
@@ -118,7 +118,7 @@ class Aurora {
       });
     } else {
       throw new AuroraClassError(
-        "Invalid input. Please provide an array of header names or no params to remove all headers."
+        'Invalid input. Please provide an array of header names or no params to remove all headers.'
       );
     }
   }
@@ -130,12 +130,12 @@ class Aurora {
    * @throws {AuroraClassError} Throws an error if the parameter is not of type 'object'.
    */
   addParams(params) {
-    if (typeof params === "object" && params !== null) {
+    if (typeof params === 'object' && params !== null) {
       for (const [key, value] of Object.entries(params)) {
         this.axiosInstance.defaults.params[key] = value;
       }
     } else {
-      throw new AuroraClassError("Param must be of type Object");
+      throw new AuroraClassError('Param must be of type Object');
     }
   }
 
@@ -154,7 +154,7 @@ class Aurora {
       });
     } else {
       throw new AuroraClassError(
-        "Invalid input. Please provide an array of parameter names or no params to remove all parameters."
+        'Invalid input. Please provide an array of parameter names or no params to remove all parameters.'
       );
     }
   }
@@ -166,10 +166,10 @@ class Aurora {
    * @throws {AuroraClassError} Throws an error if the parameter is not a Number.
    */
   addTimeout(timeout) {
-    if (typeof timeout === "number") {
+    if (typeof timeout === 'number') {
       this.axiosInstance.defaults.timeout = timeout;
     } else {
-      throw new AuroraClassError("Timeout must be a number in milliseconds.");
+      throw new AuroraClassError('Timeout must be a number in milliseconds.');
     }
   }
 
@@ -195,62 +195,62 @@ class Aurora {
     config,
     abortController
   ) {
-    if (combinedURL == null || combinedURL.trim() == "")
-      throw new AuroraInstanceError("URL cannot be null");
+    if (combinedURL == null || combinedURL.trim() == '')
+      throw new AuroraInstanceError('URL cannot be null');
 
-    if (typeof method !== "string") {
+    if (typeof method !== 'string') {
       throw new AuroraInstanceError(
-        "Method must be of type string (get/post/put/patch/delete)"
+        'Method must be of type string (get/post/put/patch/delete)'
       );
     }
-    if (headers && typeof headers != "object") {
-      throw new AuroraInstanceError("Headers must be of type object.");
+    if (headers && typeof headers != 'object') {
+      throw new AuroraInstanceError('Headers must be of type object.');
     }
-    if (params && typeof params != "object") {
-      throw new AuroraInstanceError("Query Params must be of type object.");
+    if (params && typeof params != 'object') {
+      throw new AuroraInstanceError('Query Params must be of type object.');
     }
-    if (config && typeof config != "object") {
-      throw new AuroraInstanceError("Config must be of type object.");
+    if (config && typeof config != 'object') {
+      throw new AuroraInstanceError('Config must be of type object.');
     }
-    if (abortController && typeof abortController != "object") {
+    if (abortController && typeof abortController != 'object') {
       throw new AuroraInstanceError(
-        "The AbortController must be of type AbortController."
+        'The AbortController must be of type AbortController.'
       );
     }
   }
 
   static combineURL(url, endpoint) {
-    const cleanURL = url.replace(/\/+$/, "");
-    const cleanEndpoint = endpoint.replace(/^\/+/, "");
+    const cleanURL = url.replace(/\/+$/, '');
+    const cleanEndpoint = endpoint.replace(/^\/+/, '');
 
     return `${cleanURL}/${cleanEndpoint}`;
   }
 
   static mountEndpoint(baseURL, endpoint, isReactive) {
-    if (!isReactive && typeof endpoint == "object") {
+    if (!isReactive && typeof endpoint == 'object') {
       throw new AuroraInstanceError(
-        "URL or Endpoint cannot be of type object if the call is not reactive."
+        'URL or Endpoint cannot be of type object if the call is not reactive.'
       );
     }
-    if (typeof endpoint == "number") {
-      throw new AuroraInstanceError("URL or Endpoint cannot be a number");
+    if (typeof endpoint == 'number') {
+      throw new AuroraInstanceError('URL or Endpoint cannot be a number');
     }
 
     if (isReactive) {
       if (endpoint == null) {
         return baseURL;
       }
-      if (baseURL == null || baseURL.trim() == "") {
+      if (baseURL == null || baseURL.trim() == '') {
         return endpoint.value;
       }
       return Aurora.combineURL(baseURL, endpoint.value);
     }
 
     if (!isReactive) {
-      if (endpoint == null || endpoint.trim() == "") {
+      if (endpoint == null || endpoint.trim() == '') {
         return baseURL;
       }
-      if (baseURL == null || baseURL.trim() == "") {
+      if (baseURL == null || baseURL.trim() == '') {
         return endpoint;
       }
       return Aurora.combineURL(baseURL, endpoint);
@@ -408,7 +408,7 @@ class Aurora {
    * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
    * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
-  get = this.call.bind(this, "get");
+  get = this.call.bind(this, 'get');
 
   /**
    * Alias for making an HTTP POST request using the 'call' method.
@@ -430,7 +430,7 @@ class Aurora {
    * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
    * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
-  post = this.call.bind(this, "post");
+  post = this.call.bind(this, 'post');
 
   /**
    * Alias for making an HTTP PUT request using the 'call' method.
@@ -452,7 +452,7 @@ class Aurora {
    * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
    * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
-  put = this.call.bind(this, "put");
+  put = this.call.bind(this, 'put');
 
   /**
    * Alias for making an HTTP PATCH request using the 'call' method.
@@ -470,7 +470,7 @@ class Aurora {
    * @throws {AuroraInstanceError} Throws an error if the URL is either empty or null.
    * @throws {AuroraInstanceError} Throws an error if the method is not of type String.
    */
-  patch = this.call.bind(this, "patch");
+  patch = this.call.bind(this, 'patch');
 
   /**
    * Alias for making an HTTP DELETE request using the 'call' method.
@@ -492,7 +492,7 @@ class Aurora {
    * @throws {AuroraInstanceError} Throws an error if the config param is not of type object (if given).
    * @throws {AuroraInstanceError} Throws an error if the abortController param is not of type AbortController (if given).
    */
-  delete = this.call.bind(this, "delete");
+  delete = this.call.bind(this, 'delete');
 }
 
 export default Aurora;
